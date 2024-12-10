@@ -16,3 +16,10 @@
   <li><code>/shortendurls</code> - Retrieve a list of shortened URLs for a user</li>
   <li><code>/search</code> - Search for a URL by its friendly name </li>
 </ul>
+
+<h2>Setup Instructions</h2>
+<ol>
+  <li>Install dependencies by running <code>npm install</code> in the project directory.</li>
+  <li>Start the development server using <code>npm run dev</code>.</li>
+  <li>For the database, use <a href="https://www.mongodb.com/products/compass" target="_blank">MongoDB Compass</a> to manage and explore your database.</li>
+</ol>
