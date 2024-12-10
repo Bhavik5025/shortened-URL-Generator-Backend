@@ -1,0 +1,23 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "Node-Express Assignment",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon src/app.js",
+    "start": "node src/app.js"
+  },
+  "author": "Bhavik Patel",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "cores": "^0.8.5",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.8.4",
+    "shortid": "^2.2.16",
+    "url-shortener": "^0.2.6"
+  }
+}
