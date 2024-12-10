@@ -22,4 +22,6 @@
   <li>Install dependencies by running <code>npm install</code> in the project directory.</li>
   <li>Start the development server using <code>npm run dev</code>.</li>
   <li>For the database, use <a href="https://www.mongodb.com/products/compass" target="_blank">MongoDB Compass</a> to manage and explore your database.</li>
+  <li>Use <a href="https://www.postman.com/" target="_blank">Postman</a> for testing API endpoints during development.</li>
+
 </ol>
