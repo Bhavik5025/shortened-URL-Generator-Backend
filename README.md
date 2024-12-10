@@ -17,6 +17,18 @@
   <li><code>/search</code> - Search for a URL by its friendly name </li>
 </ul>
 
+<h2>Database Schema Requirements</h2>
+
+<h3>Users Schema</h3>
+<p>Stores user information, including their name,password, and account creation timestamp.</p>
+
+<h3>URLs Schema</h3>
+<p>Manages data for shortened URLs, including the original URL, the generated shortened URL, a custom friendly name, the associated user, and the creation timestamp.</p>
+
+<h3>Counts Schema</h3>
+<p>Tracks click statistics for each shortened URL, including the status of clicks (success or failure), and associated URL ID.</p>
+
+
 <h2>Setup Instructions</h2>
 <ol>
   <li>Install dependencies by running <code>npm install</code> in the project directory.</li>
