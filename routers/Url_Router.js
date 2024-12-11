@@ -97,37 +97,76 @@ router.post("/Url_status", tokenVerify, async (req, res) => {
 });
 //return successfull count
 router.post("/success_count", tokenVerify, async (req, res) => {
-  const counts = await Counts.find({ url_id: req.body.url_id });
-  const success = await Counts.aggregate([
-    { $match: { url_id: req.body.url_id, status: "Success" } }, // Match documents by url_id and status
-    { $group: { _id: "$url_id", totalsuccess: { $sum: 1 } } }, // Group by url_id and count the number of successful entries
-  ]);
+  try {
+    const { url_id } = req.body;
+    if (!url_id) {
+      return res.status(400).json({ message: "URL ID is required" });
+    }
 
-  res
-    .status(200)
-    .json({
+    const success = await Counts.aggregate([
+      { $match: { url_id, status: "Success" } },
+      { $group: { _id: "$url_id", totalsuccess: { $sum: 1 } } },
+    ]);
+
+    const totalSuccess = success.length > 0 ? success[0].totalsuccess : 0;
+
+    res.status(200).json({
       message: "Total successful clicks",
-      success: success[0].totalsuccess,
+      success: totalSuccess,
     });
+  } catch (error) {
+    console.error("Error in /success_count:", error);
+    res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
 });
+
 //return failure count
 router.post("/failure_count", tokenVerify, async (req, res) => {
-  const counts = await Counts.find({ url_id: req.body.url_id });
-  const failure = await Counts.aggregate([
-    { $match: { url_id: req.body.url_id, status: "Failure" } }, // Match documents by url_id and status
-    { $group: { _id: "$url_id", totalfailure: { $sum: 1 } } }, // Group by url_id and count the number of successful entries
-  ]);
+  try {
+    const { url_id } = req.body;
 
-  if (failure.length === 0) {
-    return res.status(404).json({ message: "No fail clicks found" });
-  }
-  res
-    .status(200)
-    .json({
+    if (!url_id) {
+      return res.status(400).json({ message: "url_id is required" });
+    }
+
+    // Aggregation to get the count of failures
+    const failure = await Counts.aggregate([
+      { 
+        $match: { 
+          url_id: url_id, 
+          status: "Failure" 
+        } 
+      }, 
+      { 
+        $group: { 
+          _id: "$url_id", 
+          totalfailure: { $sum: 1 } 
+        } 
+      }
+    ]);
+
+    if (failure.length === 0) {
+      return res.status(200).json({
+        message: "Total Failure clicks",
+        success: 0, // Return 0 if no failures are found
+      });
+    }
+
+    // Return the failure count
+    res.status(200).json({
       message: "Total Failure clicks",
       success: failure[0].totalfailure,
     });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
 });
+
 
 //list of shortendurls created by user in sorted order based on creation time
 router.post("/shortendurls", tokenVerify, async (req, res) => {
@@ -135,7 +174,7 @@ router.post("/shortendurls", tokenVerify, async (req, res) => {
     created_at: -1,
   });
   if (data) {
-    res.json({ message: data });
+    res.status(201).json({ message: data });
   } else {
     res.json({ message: "error" });
   }
