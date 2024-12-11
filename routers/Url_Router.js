@@ -131,7 +131,7 @@ router.post("/failure_count", tokenVerify, async (req, res) => {
 
 //list of shortendurls created by user in sorted order based on creation time
 router.post("/shortendurls", tokenVerify, async (req, res) => {
-  const data = await Urls.find({ user_id: req.body.user_id }).sort({
+  const data = await Urls.find({ user_id: req.user.id }).sort({
     created_at: -1,
   });
   if (data) {
