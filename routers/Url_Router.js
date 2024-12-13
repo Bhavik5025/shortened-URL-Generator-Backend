@@ -43,7 +43,7 @@ const tokenVerify = (req, res, next) => {
 router.post("/createShortendUrl", tokenVerify, async (req, res) => {
   // At this point, the token is verified, and user data is available in req.user
   try {
-    const shortUrl = "MyShortendURl/" + shortid.generate();
+    const shortUrl = "http://MyShortenedURL/" + shortid.generate();
 
     const url = new Urls({
       original_url: req.body.original_url,
