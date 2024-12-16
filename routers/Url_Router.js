@@ -1,5 +1,4 @@
 const express = require("express");
-const User = require("../models/Urls");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
 const Urls = require("../models/Urls");
@@ -61,6 +60,30 @@ router.post("/createShortendUrl", tokenVerify, async (req, res) => {
     res.status(500).json({ error: "Failed to Save Url" });
   }
 });
+
+//url click
+// Import your Urls model
+
+router.get("/:shortId", async (req, res) => {
+  try {
+    const shortId = req.params.shortId;
+
+    // Find the URL by its short ID
+    const url = await Urls.findOne({ shortened_url: { $regex: shortId, $options: "i" } });
+
+    if (!url) {
+      return res.status(404).send("URL not found");
+    }
+
+    // Redirect to the original URL
+    return res.redirect(url.original_url);
+  } catch (error) {
+    console.error("Error during redirection:", error.message);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+
 //when click on shortend_url then every request is store in database with creation time
 router.post("/Url_status", tokenVerify, async (req, res) => {
   try {
@@ -123,6 +146,19 @@ router.post("/success_count", tokenVerify, async (req, res) => {
   }
 });
 
+//list of shortendurls created by user in sorted order based on creation time
+router.post("/shortendurls", tokenVerify, async (req, res) => {
+  const data = await Urls.find({ user_id: req.user.id }).sort({
+    created_at: -1,
+  });
+  if (data) {
+    res.json({ message: data });
+  } else {
+    res.json({ message: "error" });
+  }
+});
+
+
 //return failure count
 router.post("/failure_count", tokenVerify, async (req, res) => {
   try {
@@ -167,16 +203,20 @@ router.post("/failure_count", tokenVerify, async (req, res) => {
   }
 });
 
+//improvised version of success and failure count
+router.post("/totalcounts", tokenVerify, async (req, res) => {
+  try {
+    const successCount = await Counts.countDocuments({ url_id: req.body.url_id, status: "Success" });
+    const failureCount = await Counts.countDocuments({ url_id: req.body.url_id, status: "Failure" });
 
-//list of shortendurls created by user in sorted order based on creation time
-router.post("/shortendurls", tokenVerify, async (req, res) => {
-  const data = await Urls.find({ user_id: req.user.id }).sort({
-    created_at: -1,
-  });
-  if (data) {
-    res.status(201).json({ message: data });
-  } else {
-    res.json({ message: "error" });
+    return res.status(200).json({
+      message: "Total counts",
+      Success: successCount,
+      Failure: failureCount,
+    });
+  } catch (error) {
+    console.error("Error in /totalcounts:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
