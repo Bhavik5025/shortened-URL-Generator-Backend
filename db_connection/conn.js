@@ -5,6 +5,6 @@ function handleError(error) {
     process.exit(1); // Exit the process if the database connection fails
 }
 
-mongoose.connect("mongodb+srv://bhavik:Svsm4142@bhavikprojects.tix8r.mongodb.net/Assignment")
+mongoose.connect("mongodb://localhost:27017/Assignment")
     .then(() => console.log("Database connected successfully"))
     .catch(error => handleError(error));

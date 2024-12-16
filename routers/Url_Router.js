@@ -14,7 +14,9 @@ const tokenVerify = (req, res, next) => {
   const token = authHeader && authHeader.split(" ")[1]; // Extract token (Bearer <token>)
 
   if (!token) {
-    return res.status(401).json({ error: "Access denied. No token provided." });
+
+    console.log( "Access denied. No token provided." );
+    return res.redirect("http://localhost:3001/authentication");
   }
 
   try {
@@ -33,7 +35,7 @@ const tokenVerify = (req, res, next) => {
         .status(401)
         .json({ error: "Token has expired. Please login again." });
     } else {
-      return res.status(403).json({ error: "Invalid token." });
+      return res.redirect("http://localhost:3001/authentication");
     }
   }
 };
@@ -42,7 +44,7 @@ const tokenVerify = (req, res, next) => {
 router.post("/createShortendUrl", tokenVerify, async (req, res) => {
   // At this point, the token is verified, and user data is available in req.user
   try {
-    const shortUrl = "http://MyShortenedURL/" + shortid.generate();
+    const shortUrl = "localhost:3000/" + shortid.generate();
 
     const url = new Urls({
       original_url: req.body.original_url,
@@ -64,20 +66,48 @@ router.post("/createShortendUrl", tokenVerify, async (req, res) => {
 //url click
 // Import your Urls model
 
-router.get("/:shortId", async (req, res) => {
+router.get("/:shortId",async (req, res) => {
+  const shortId = req.params.shortId;
+  const shoreterurl = await Urls.findOne({ shortened_url: { $regex: shortId, $options: "i" } });
+
   try {
-    const shortId = req.params.shortId;
+    
 
     // Find the URL by its short ID
-    const url = await Urls.findOne({ shortened_url: { $regex: shortId, $options: "i" } });
-
-    if (!url) {
+    
+    if (!shoreterurl) {
       return res.status(404).send("URL not found");
     }
 
     // Redirect to the original URL
-    return res.redirect(url.original_url);
+    const url = await axios.get(shoreterurl.original_url);
+    if (url.status >= 200 && url.status < 300) {
+      const urladd = new Counts({
+        url_id: shoreterurl._id,
+
+        count: 1,
+        status: "Success",
+      });
+      await urladd.save();
+     
+    } else {
+      const urladd = new Counts({
+        url_id: shoreterurl._id,
+
+        count: 1,
+        status: "Failure",
+      });
+      await urladd.save();
+    }
+    return res.redirect(shoreterurl.original_url);
   } catch (error) {
+    const urladd = new Counts({
+      url_id: shoreterurl._id,
+
+      count: 1,
+      status: "Failure",
+    });
+    await urladd.save();
     console.error("Error during redirection:", error.message);
     res.status(500).send("Internal Server Error");
   }
