@@ -15,6 +15,7 @@
   <li><code>/failure_count</code> - Get the number of failed clicks for a URL</li>
   <li><code>/shortendurls</code> - Retrieve a list of shortened URLs for a user</li>
   <li><code>/search</code> - Search for a URL by its friendly name </li>
+  <li><code>/:short_id</code> - goto original url using short url </li>
 </ul>
 
 <h2>Database Schema Requirements</h2>
