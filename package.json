@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Node-Express Assignment",
   "main": "src/app.js",
-  "engines": {"node":"22.x"},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon src/app.js",
@@ -15,6 +14,8 @@
     "axios": "^1.7.9",
     "cores": "^0.8.5",
     "cors": "^2.8.5",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.8.4",

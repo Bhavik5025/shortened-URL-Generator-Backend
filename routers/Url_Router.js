@@ -1,9 +1,10 @@
 const express = require("express");
 const router = express.Router();
+require('dotenv').config();
 const jwt = require("jsonwebtoken");
 const Urls = require("../models/Urls");
 const Counts = require("../models/Counts");
-const SECRET_KEY = "bhavik123";
+const SECRET_KEY = process.env.SECRET_KEY;
 const axios = require("axios");
 const shortid = require("shortid");
 
@@ -16,7 +17,7 @@ const tokenVerify = (req, res, next) => {
   if (!token) {
 
     console.log( "Access denied. No token provided." );
-    return res.redirect("http://localhost:3001/authentication");
+    return res.redirect(process.env.FRONTEND_CONNECTION+"/authentication");
   }
 
   try {
@@ -35,7 +36,7 @@ const tokenVerify = (req, res, next) => {
         .status(401)
         .json({ error: "Token has expired. Please login again." });
     } else {
-      return res.redirect("http://localhost:3001/authentication");
+      return res.redirect(process.env.FRONTEND_CONNECTION+"/authentication");
     }
   }
 };
@@ -44,7 +45,7 @@ const tokenVerify = (req, res, next) => {
 router.post("/createShortendUrl", tokenVerify, async (req, res) => {
   // At this point, the token is verified, and user data is available in req.user
   try {
-    const shortUrl = "localhost:3000/" + shortid.generate();
+    const shortUrl = process.env.BACKEND_CONNECTION+"/" + shortid.generate();
 
     const url = new Urls({
       original_url: req.body.original_url,

@@ -5,6 +5,7 @@ const urlSchema = new mongoose.Schema({
   shortened_url: { type: String, required: true },
   friendly_name:  String ,
   user_id: String,
+  secret_key:Number
   
 }, { timestamps: true });
 
