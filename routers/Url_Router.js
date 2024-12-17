@@ -143,7 +143,6 @@ router.post("/success_count", tokenVerify, async (req, res) => {
   }
 });
 
-//list of shortendurls created by user in sorted order based on creation time
 
 //return failure count
 router.post("/failure_count", tokenVerify, async (req, res) => {
@@ -222,7 +221,7 @@ router.post("/search", tokenVerify, async (req, res) => {
     res.json({ message: "data not found" });
   }
 });
-
+//list of shortendurls created by user in sorted order based on creation time
 router.post("/shortendurls", tokenVerify, async (req, res) => {
   try {
     // Find URLs for the authenticated user and sort by created_at descending
@@ -303,14 +302,14 @@ router.get("/:shortId", async (req, res) => {
           <script src="https://cdn.tailwindcss.com"></script>
         </head>
         <body class="bg-gray-100 flex items-center justify-center h-screen">
-          <!-- Container -->
+      
           <div class="w-full max-w-md px-6 py-8 bg-white shadow-lg rounded-lg">
             <h1 class="text-2xl font-semibold text-center text-gray-700 mb-6">
               Enter Secret Key
             </h1>
-            <!-- Form -->
+           
             <form id="secretForm" class="flex flex-col space-y-4">
-              <!-- Input -->
+             
               <input
                 type="password"
                 id="secretKey"
@@ -319,7 +318,7 @@ router.get("/:shortId", async (req, res) => {
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
                 required
               />
-              <!-- Submit Button -->
+            
               <button
                 type="submit"
                 class="w-full bg-red-500 text-white py-2 rounded-lg font-semibold hover:bg-red-600 transition duration-300"
