@@ -30,7 +30,7 @@ router.post("/totalcounts", tokenVerify, Total_Count);
 //Search the Urls based on their friendly Name
 router.post("/search", tokenVerify, Search_URL);
 //list of shortendurls created by user in sorted order based on creation time
-router.post("/shortendurls", tokenVerify, URL_List);
+router.get("/shortendurls", tokenVerify, URL_List);
 
 //when click on shortend_url then every request is store in database with creation time
 router.get("/Url_statistics/:url_id", tokenVerify, URL_Status);

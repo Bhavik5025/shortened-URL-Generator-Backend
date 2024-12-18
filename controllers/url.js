@@ -149,17 +149,35 @@ async function Search_URL(req, res) {
     res.json({ message: "data not found" });
   }
 }
-
 async function URL_List(req, res) {
   try {
-    // Find URLs for the authenticated user and sort by created_at descending
-    const data = await Urls.find({ user_id: req.user.id }).sort({
-      created_at: -1,
-    });
+    // Get the current page and limit from the query parameters, defaulting to 1 for page and 10 for limit
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    // Calculate the number of items to skip
+    const skip = (page - 1) * limit;
+
+    // Find URLs for the authenticated user, sorted by created_at descending, with pagination
+    const data = await Urls.find({ user_id: req.user.id })
+      .sort({ created_at: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    // Find the total count of URLs for pagination info
+    const totalCount = await Urls.countDocuments({ user_id: req.user.id });
 
     if (data.length > 0) {
-      // If data exists, return it
-      res.json({ message: data });
+      // If data exists, return it along with pagination info
+      res.json({
+        message: data,
+        pagination: {
+          page,
+          limit,
+          totalPages: Math.ceil(totalCount / limit),
+          totalCount,
+        },
+      });
     } else {
       // If no data is found, return an appropriate response
       res.status(404).json({ message: "No URLs found for this user" });
@@ -170,6 +188,7 @@ async function URL_List(req, res) {
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
+
 async function URL_Status(req, res) {
   try {
     const { url_id } = req.params; // Extract URL ID from request parameters
