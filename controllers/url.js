@@ -178,40 +178,31 @@ async function URL_Creation (req, res) {
     }
   }
   async function URL_Status(req, res) {
-    const userAgent = req.headers["user-agent"] || "Unknown";
-    const parser = new UAParser(userAgent);
-    const result = parser.getResult();
-    const deviceName = result.device && result.device.model ? result.device.model : 
-    (result.os.name === "Windows" ? "Windows Device" : "Unknown Device");
-    const browserName = result.browser.name || "Unknown Browser";
-  
     try {
-      const url = await axios.get(req.body.url);
-      const status = url.status >= 200 && url.status < 300 ? "Success" : "Failure";
+      const { url_id } = req.params; // Extract URL ID from request parameters
+    
+      // Ensure that the URL ID is provided
+      if (!url_id) {
+        return res.status(400).json({ message: "URL ID is required" });
+      }
   
-      const urlAdd = new URL_Logs({
-        url_id: req.body.url_id,
-        ipAddress: req.ip || req.headers["x-forwarded-for"] || "Unknown",
-        Device_name: `${deviceName} (${browserName})`,
-        count: 1,
-        status,
-      });
-      await urlAdd.save();
+      // Find URLs based on the provided url_id
+      const Url_statistics = await URL_Logs.find({ url_id:url_id });
+
+      // If no URLs are found, return a 404 response
+      if (Url_statistics.length === 0) {
+        return res.status(404).json({ message: "No URLs found for the provided ID" });
+      }
   
-      res.json({ message: status });
+      // Successfully found URLs, return the data
+      res.status(200).json({ message: "List of URLs", urls: Url_statistics });
     } catch (error) {
-      const urlAdd = new URL_Logs({
-        url_id: req.body.url_id,
-        ipAddress: req.ip || req.headers["x-forwarded-for"] || "Unknown",
-        Device_name: `${deviceName} (${browserName})`,
-        count: 1,
-        status: "Failure",
-      });
-      await urlAdd.save();
-  
-      res.json({ message: "Failure" });
+      // Catch any errors and send a 500 status with a message
+      console.error("Error fetching URL data:", error);
+      res.status(500).json({ message: "Internal Server Error" });
     }
   }
+  
   
 
   async function URL_Validation (req, res) {
@@ -237,7 +228,7 @@ async function URL_Creation (req, res) {
          // If no secret_key exists, redirect directly to the original URL
     if (!shortenedUrl.secret_key) {
       const urlAdd = new URL_Logs({
-        url_id: req.body.url_id,
+        url_id: shortenedUrl._id,
         ipAddress: req.ip || req.headers["x-forwarded-for"] || "Unknown",
         Device_name: `${deviceName} (${browserName})`,
         count: 1,
@@ -377,5 +368,6 @@ async function URL_Creation (req, res) {
       return res.status(500).json({ message: "Internal Server Error" });
     }
   }
+
   
   module.exports={URL_Creation,Success_Count,Failure_Count,Total_Count,Search_URL,URL_List,URL_Status,URL_Validation,URL_Operation}

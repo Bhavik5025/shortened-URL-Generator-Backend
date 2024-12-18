@@ -33,12 +33,14 @@ router.post("/search", tokenVerify, Search_URL);
 router.post("/shortendurls", tokenVerify, URL_List);
 
 //when click on shortend_url then every request is store in database with creation time
-router.post("/Url_status", tokenVerify, URL_Status);
+router.get("/Url_statistics/:url_id", tokenVerify, URL_Status);
 
 //url verification using secret key
 router.get("/:shortId", URL_Validation);
 
 // POST route for secret key verification
 router.post("/:shortId", URL_Operation);
+
+//
 
 module.exports = router;
