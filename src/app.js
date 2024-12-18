@@ -2,8 +2,8 @@ const express = require("express");
 const cors = require("cors"); 
 const app = express();
 require("../db_connection/conn");
-const User_Router = require("../routers/User_Router.js");
-const Url_Router=require("../routers/Url_Router.js");
+const User_Router = require("../routes/User_Router.js");
+const Url_Router=require("../routes/Url_Router.js");
 const port = process.env.PORT || 3000;
 
 // Middleware to parse incoming JSON requests

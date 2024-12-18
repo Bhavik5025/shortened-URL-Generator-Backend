@@ -1,54 +1,11 @@
-const express = require("express");
-require('dotenv').config();
+require("dotenv").config();
 const User = require("../models/User");
-const router = express.Router();
+
+const CryptoJS = require("crypto-js");
 const jwt = require("jsonwebtoken");
-const CryptoJS = require('crypto-js');
 const SECRET_KEY = process.env.SECRET_KEY;
-const USER_SECRET_KEY=process.env.USER_SECRET_KEY;
-const checkUserExists = async (req, res, next) => {
-  const { name, password } = req.body;
-
-  // Validate input
-  if (!name || !password) {
-    return res.status(400).json({ error: "Name and password are required" });
-  }
-
-  try {
-    // Find user by name in the database
-    const existingUser = await User.findOne({ name });
-
-    if (existingUser) {
-      // Decrypt the stored password
-      const bytes = CryptoJS.AES.decrypt(existingUser.password, USER_SECRET_KEY);
-      const decryptedPassword = bytes.toString(CryptoJS.enc.Utf8);
-
-      // Compare the decrypted password with the entered password
-      if (decryptedPassword === password) {
-        return res.status(200).json({
-          message: "User with the same name and password exists in the database",
-          user: existingUser,
-        });
-      } else {
-        return res.status(401).json({ error: "Invalid password" });
-      }
-    }
-
-    // User not found, proceed to the next step
-    next();
-  } catch (error) {
-    console.error("Error checking user existence:", error.message);
-    res
-      .status(500)
-      .json({ error: "An error occurred while checking user existence" });
-  }
-};
-
-
-//User Registration
-//first it check user is exist in database or not using checkUserExists Middleware .if it is not exist then new user data store in database.
-
-router.post("/Register", checkUserExists, async (req, res) => {
+const USER_SECRET_KEY = process.env.USER_SECRET_KEY;
+async function User_Registration(req, res) {
   const { name, password } = req.body;
 
   // Validate required fields
@@ -56,13 +13,16 @@ router.post("/Register", checkUserExists, async (req, res) => {
     return res.status(400).json({ error: "All fields are required" });
   }
   //apply encryption
-  const encrypted_pasword = CryptoJS.AES.encrypt(password, USER_SECRET_KEY).toString();
- 
+  const encrypted_pasword = CryptoJS.AES.encrypt(
+    password,
+    USER_SECRET_KEY
+  ).toString();
+
   try {
     // Save new user to the database
     const user = new User({
       name,
-      password:encrypted_pasword,
+      password: encrypted_pasword,
     });
 
     await user.save();
@@ -81,14 +41,15 @@ router.post("/Register", checkUserExists, async (req, res) => {
     res.status(201).json({
       message: "User saved successfully",
       user,
-      token, 
+      token,
     });
   } catch (error) {
     console.error("Error saving data:", error.message);
     res.status(500).json({ error: "Failed to Register User" });
   }
-});
-router.post("/Login", async (req, res) => {
+}
+
+async function User_Login(req, res) {
   const { name, password } = req.body;
 
   // Validate required fields
@@ -101,7 +62,9 @@ router.post("/Login", async (req, res) => {
     const user = await User.findOne({ name });
 
     if (!user) {
-      return res.status(401).json({ error: "Invalid credentials or Please Login" });
+      return res
+        .status(401)
+        .json({ error: "Invalid credentials or Please Login" });
     }
 
     // Decrypt the stored password
@@ -132,6 +95,6 @@ router.post("/Login", async (req, res) => {
     console.error("Error during login:", error.message);
     res.status(500).json({ error: "An error occurred while processing login" });
   }
-});
+}
 
-module.exports = router;
+module.exports = { User_Registration, User_Login };
