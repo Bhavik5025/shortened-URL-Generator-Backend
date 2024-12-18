@@ -1,8 +1,10 @@
 require("dotenv").config();
 const Urls = require("../models/Urls");
-const Counts = require("../models/Counts");
+const URL_Logs = require("../models/URL_Logs");
 const axios = require("axios");
 const shortid = require("shortid");
+const UAParser = require("ua-parser-js");
+
 
 async function URL_Creation (req, res) {
     // At this point, the token is verified, and user data is available in req.user
@@ -10,21 +12,40 @@ async function URL_Creation (req, res) {
       const key=Math.floor(1000000000 + Math.random() * 9000000000);
   
       const shortUrl = process.env.BACKEND_CONNECTION + "/" + shortid.generate();
-  
-      const url = new Urls({
-        original_url: req.body.original_url,
-        shortened_url: shortUrl,
-        friendly_name: req.body.friendly_name,
-        user_id: req.user.id,
-        secret_key:key,
-        expired:false
-        
-      });
-      await url.save();
-      res.status(201).json({
-        message: "Url saved Successfully",
-        url,
-      });
+      
+      if(req.body.secret_key_status=="true")
+      {
+        const url = new Urls({
+          original_url: req.body.original_url,
+          shortened_url: shortUrl,
+          friendly_name: req.body.friendly_name,
+          user_id: req.user.id,
+          secret_key:key,
+          expired:false
+          
+        });
+        await url.save();
+        res.status(201).json({
+          message: "Url saved Successfully",
+          url,
+        });
+      }
+      else{
+        const url = new Urls({
+          original_url: req.body.original_url,
+          shortened_url: shortUrl,
+          friendly_name: req.body.friendly_name,
+          user_id: req.user.id,
+          
+          expired:false
+          
+        });
+        await url.save();
+        res.status(201).json({
+          message: "Url saved Successfully",
+          url,
+        });
+      }
     } catch (error) {
       console.error("Error saving data:", error.message);
       res.status(500).json({ error: "Failed to Save Url" });
@@ -32,13 +53,14 @@ async function URL_Creation (req, res) {
   }
 
   async function Success_Count (req, res) {
+
     try {
       const { url_id } = req.body;
       if (!url_id) {
         return res.status(400).json({ message: "URL ID is required" });
       }
   
-      const success = await Counts.aggregate([
+      const success = await URL_Logs.aggregate([
         { $match: { url_id, status: "Success" } },
         { $group: { _id: "$url_id", totalsuccess: { $sum: 1 } } },
       ]);
@@ -68,7 +90,7 @@ async function URL_Creation (req, res) {
       }
   
       // Aggregation to get the count of failures
-      const failure = await Counts.aggregate([
+      const failure = await URL_Logs.aggregate([
         {
           $match: {
             url_id: url_id,
@@ -103,11 +125,11 @@ async function URL_Creation (req, res) {
 
   async function Total_Count (req, res)  {
     try {
-      const successCount = await Counts.countDocuments({
+      const successCount = await URL_Logs.countDocuments({
         url_id: req.body.url_id,
         status: "Success",
       });
-      const failureCount = await Counts.countDocuments({
+      const failureCount = await URL_Logs.countDocuments({
         url_id: req.body.url_id,
         status: "Failure",
       });
@@ -155,43 +177,52 @@ async function URL_Creation (req, res) {
       res.status(500).json({ message: "Internal Server Error" });
     }
   }
-
-  async function URL_Status (req, res)  {
+  async function URL_Status(req, res) {
+    const userAgent = req.headers["user-agent"] || "Unknown";
+    const parser = new UAParser(userAgent);
+    const result = parser.getResult();
+    const deviceName = result.device && result.device.model ? result.device.model : 
+    (result.os.name === "Windows" ? "Windows Device" : "Unknown Device");
+    const browserName = result.browser.name || "Unknown Browser";
+  
     try {
       const url = await axios.get(req.body.url);
-      if (url.status >= 200 && url.status < 300) {
-        const urladd = new Counts({
-          url_id: req.body.url_id,
+      const status = url.status >= 200 && url.status < 300 ? "Success" : "Failure";
   
-          count: 1,
-          status: "Success",
-        });
-        await urladd.save();
-        res.json({ message: "Success" });
-      } else {
-        const urladd = new Counts({
-          url_id: req.body.url_id,
-  
-          count: 1,
-          status: "Failure",
-        });
-        await urladd.save();
-        res.json({ message: "Failure" });
-      }
-    } catch (error) {
-      const urladd = new Counts({
+      const urlAdd = new URL_Logs({
         url_id: req.body.url_id,
+        ipAddress: req.ip || req.headers["x-forwarded-for"] || "Unknown",
+        Device_name: `${deviceName} (${browserName})`,
+        count: 1,
+        status,
+      });
+      await urlAdd.save();
   
+      res.json({ message: status });
+    } catch (error) {
+      const urlAdd = new URL_Logs({
+        url_id: req.body.url_id,
+        ipAddress: req.ip || req.headers["x-forwarded-for"] || "Unknown",
+        Device_name: `${deviceName} (${browserName})`,
         count: 1,
         status: "Failure",
       });
-      await urladd.save();
+      await urlAdd.save();
+  
       res.json({ message: "Failure" });
     }
   }
+  
 
   async function URL_Validation (req, res) {
     const shortId = req.params.shortId;
+    const userAgent = req.headers["user-agent"] || "Unknown";
+    const parser = new UAParser(userAgent);
+    const result = parser.getResult();
+  
+    const deviceName = result.device && result.device.model ? result.device.model : 
+    (result.os.name === "Windows" ? "Windows Device" : "Unknown Device");
+    const browserName = result.browser.name || "Unknown Browser";
   
     try {
       // Find the URL by its short ID
@@ -202,7 +233,20 @@ async function URL_Creation (req, res) {
       if (!shortenedUrl) {
         return res.status(404).send("URL not found");
       }
-  
+      
+         // If no secret_key exists, redirect directly to the original URL
+    if (!shortenedUrl.secret_key) {
+      const urlAdd = new URL_Logs({
+        url_id: req.body.url_id,
+        ipAddress: req.ip || req.headers["x-forwarded-for"] || "Unknown",
+        Device_name: `${deviceName} (${browserName})`,
+        count: 1,
+        status:"Success",
+      });
+      await urlAdd.save();
+      return res.redirect(shortenedUrl.original_url);
+    }
+
       // Send a simple HTML page to collect the secret key
       return res.send(`
        <!DOCTYPE html>
@@ -273,51 +317,65 @@ async function URL_Creation (req, res) {
       res.status(500).send("Internal Server Error");
     }
   }
-
-  async function URL_Operation (req, res)  {
+  async function URL_Operation(req, res) {
     const shortId = req.params.shortId;
     const { secret_key } = req.body;
+    const shortenedUrl = await Urls.findOne({
+      shortened_url: { $regex: shortId, $options: "i" },
+    });
+  
+    const userAgent = req.headers["user-agent"] || "Unknown";
+    const parser = new UAParser(userAgent);
+    const result = parser.getResult();
+  
+    const deviceName = result.device && result.device.model ? result.device.model : 
+    (result.os.name === "Windows" ? "Windows Device" : "Unknown Device");
+    const browserName = result.browser.name || "Unknown Browser";
+  
+    const ipAddress =
+    req.ip || req.headers["x-forwarded-for"] || "Unknown";
   
     try {
-      // Find the URL by its short ID
-      const shortenedUrl = await Urls.findOne({
-        shortened_url: { $regex: shortId, $options: "i" },
-      });
-  
       if (!shortenedUrl) {
         return res.status(404).json({ message: "URL not found" });
       }
   
-      // Validate the secret key
       if (shortenedUrl.secret_key !== parseInt(secret_key)) {
-        const urlAdd = new Counts({
-          url_id: shortenedUrl?._id,
+        const urlAdd = new URL_Logs({
+          url_id: shortenedUrl._id,
+          ipAddress,
+          Device_name: `${deviceName} (${browserName})`,
           count: 1,
           status: "Failure",
         });
         await urlAdd.save();
+  
         return res.status(403).json({ message: "Invalid Secret Key" });
       }
   
-      // Save a successful request in the database
-      const urlAdd = new Counts({
+      const urlAdd = new URL_Logs({
         url_id: shortenedUrl._id,
         count: 1,
+        ipAddress,
+        Device_name: `${deviceName} (${browserName})`,
         status: "Success",
       });
       await urlAdd.save();
   
-      // Send the original URL back to the client
       return res.status(200).json({ original_url: shortenedUrl.original_url });
     } catch (error) {
       console.error("Error verifying secret key:", error.message);
-      const urlAdd = new Counts({
+      const urlAdd = new URL_Logs({
         url_id: shortenedUrl?._id,
         count: 1,
+        ipAddress,
+        Device_name: `${deviceName} (${browserName})`,
         status: "Failure",
       });
       await urlAdd.save();
+  
       return res.status(500).json({ message: "Internal Server Error" });
     }
   }
+  
   module.exports={URL_Creation,Success_Count,Failure_Count,Total_Count,Search_URL,URL_List,URL_Status,URL_Validation,URL_Operation}

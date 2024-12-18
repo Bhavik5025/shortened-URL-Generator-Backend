@@ -1,10 +1,7 @@
 const express = require("express");
 const router = express.Router();
 require("dotenv").config();
-const Urls = require("../models/Urls");
-const Counts = require("../models/Counts");
-const axios = require("axios");
-const shortid = require("shortid");
+
 const { tokenVerify } = require("../middlewares");
 const {
   URL_Creation,
