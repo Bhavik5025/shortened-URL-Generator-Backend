@@ -16,7 +16,8 @@ async function URL_Creation (req, res) {
         shortened_url: shortUrl,
         friendly_name: req.body.friendly_name,
         user_id: req.user.id,
-        secret_key:key
+        secret_key:key,
+        expired:false
         
       });
       await url.save();
