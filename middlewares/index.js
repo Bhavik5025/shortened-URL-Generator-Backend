@@ -1,19 +1,18 @@
 const User = require("../models/User");
-require('dotenv').config();
+require("dotenv").config();
 
 const SECRET_KEY = process.env.SECRET_KEY;
 
-const USER_SECRET_KEY=process.env.USER_SECRET_KEY;
+const USER_SECRET_KEY = process.env.USER_SECRET_KEY;
 
 const jwt = require("jsonwebtoken");
-const CryptoJS = require('crypto-js');
+const CryptoJS = require("crypto-js");
 
 // Middleware to verify the token
 const tokenVerify = (req, res, next) => {
-  
   // Get the token from the Authorization header
   const authHeader = req.headers["authorization"];
-  
+
   const token = authHeader && authHeader.split(" ")[1]; // Extract token (Bearer <token>)
 
   if (!token) {
@@ -55,13 +54,17 @@ const checkUserExists = async (req, res, next) => {
 
     if (existingUser) {
       // Decrypt the stored password
-      const bytes = CryptoJS.AES.decrypt(existingUser.password, USER_SECRET_KEY);
+      const bytes = CryptoJS.AES.decrypt(
+        existingUser.password,
+        USER_SECRET_KEY
+      );
       const decryptedPassword = bytes.toString(CryptoJS.enc.Utf8);
 
       // Compare the decrypted password with the entered password
       if (decryptedPassword === password) {
         return res.status(200).json({
-          message: "User with the same name and password exists in the database",
+          message:
+            "User with the same name and password exists in the database",
           user: existingUser,
         });
       } else {
@@ -78,4 +81,4 @@ const checkUserExists = async (req, res, next) => {
       .json({ error: "An error occurred while checking user existence" });
   }
 };
-module.exports={tokenVerify,checkUserExists}
+module.exports = { tokenVerify, checkUserExists };
