@@ -160,7 +160,7 @@ async function URL_List(req, res) {
 
     // Find URLs for the authenticated user, sorted by created_at descending, with pagination
     const data = await Urls.find({ user_id: req.user.id })
-      .sort({ created_at: -1 })
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
@@ -221,7 +221,6 @@ async function URL_Validation(req, res) {
   const userAgent = req.headers["user-agent"] || "Unknown";
   const parser = new UAParser(userAgent);
   const result = parser.getResult();
-
   const deviceName =
     result.device && result.device.model
       ? result.device.model
