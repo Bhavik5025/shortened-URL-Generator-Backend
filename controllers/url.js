@@ -2,69 +2,133 @@ require("dotenv").config();
 const Urls = require("../models/Urls");
 const URL_Logs = require("../models/URL_Logs");
 const axios = require("axios");
-const shortid = require("shortid");
 const UAParser = require("ua-parser-js");
+const moment = require("moment");
+const logger = require("../logger");
+const shortid = require("shortid");
 
 async function URL_Creation(req, res) {
-  // At this point, the token is verified, and user data is available in req.user
   try {
-    const key = Math.floor(1000000000 + Math.random() * 9000000000);
+    const { original_url, friendly_name, secret_key_status, expire_time } =
+      req.body;
+    logger.info(
+      { time: moment().format("YYYY-MM-DD HH:mm:ss") },
+      "Received URL creation request"
+    );
 
-    const shortUrl = process.env.BACKEND_CONNECTION + "/" + shortid.generate();
-
-    if (req.body.secret_key_status == "true") {
-      const url = new Urls({
-        original_url: req.body.original_url,
-        shortened_url: shortUrl,
-        friendly_name: req.body.friendly_name,
-        user_id: req.user.id,
-        secret_key: key,
-        expired: false,
-      });
-      await url.save();
-      res.status(201).json({
-        message: "Url saved Successfully",
-        url,
-      });
-    } else {
-      const url = new Urls({
-        original_url: req.body.original_url,
-        shortened_url: shortUrl,
-        friendly_name: req.body.friendly_name,
-        user_id: req.user.id,
-
-        expired: false,
-      });
-      await url.save();
-      res.status(201).json({
-        message: "Url saved Successfully",
-        url,
-      });
+    // Validate required fields
+    if (!original_url) {
+      logger.warn(
+        { time: moment().format("YYYY-MM-DD HH:mm:ss") },
+        "URL creation failed: Original URL is missing"
+      );
+      return res.status(400).json({ error: "Original URL is required" });
     }
+
+    // Generate secret key if enabled
+    const key =
+      secret_key_status === "true" || secret_key_status === true
+        ? Math.floor(1000000000 + Math.random() * 9000000000)
+        : null;
+
+    if (key) {
+      logger.info(
+        { time: moment().format("YYYY-MM-DD HH:mm:ss"), key },
+        "Generated secret key"
+      );
+    }
+
+    // Generate shortened URL
+    const shortUrl = `${process.env.BACKEND_CONNECTION}/${shortid.generate()}`;
+    logger.info(
+      { time: moment().format("YYYY-MM-DD HH:mm:ss"), shortUrl },
+      "Generated shortened URL"
+    );
+
+    // Prepare URL data
+    const urlData = {
+      original_url,
+      shortened_url: shortUrl,
+      friendly_name,
+      user_id: req.user.id,
+    };
+
+    if (key) {
+      urlData.secret_key = key;
+    }
+    if (expire_time) {
+      urlData.expire_time = new Date(expire_time);
+      logger.info(
+        { time: moment().format("YYYY-MM-DD HH:mm:ss"), expire_time },
+        "Added expiry time to URL data"
+      );
+    }
+
+    // Save URL document
+    const url = new Urls(urlData);
+    await url.save();
+
+    logger.info(
+      { time: moment().format("YYYY-MM-DD HH:mm:ss"), urlId: url._id },
+      "URL saved successfully"
+    );
+
+    // Send response
+    res.status(201).json({
+      message: "URL saved successfully",
+      url,
+    });
   } catch (error) {
-    console.error("Error saving data:", error.message);
-    res.status(500).json({ error: "Failed to Save Url" });
+    logger.error(
+      { time: moment().format("YYYY-MM-DD HH:mm:ss"), error: error.message },
+      "Error during URL creation"
+    );
+    res.status(500).json({ error: "Failed to save URL" });
   }
 }
 
 async function Total_Count(req, res) {
   try {
+    logger.info(
+      { time: moment().format("YYYY-MM-DD HH:mm:ss"), urlId: req.body.url_id },
+      "Received request for total counts"
+    );
+
+    // Count success logs
     const successCount = await URL_Logs.countDocuments({
       url_id: req.body.url_id,
       status: "true",
     });
+    logger.info(
+      { time: moment().format("YYYY-MM-DD HH:mm:ss"), successCount },
+      "Success count calculated"
+    );
+
+    // Count failure logs
     const failureCount = await URL_Logs.countDocuments({
       url_id: req.body.url_id,
       status: "false",
     });
+    logger.info(
+      { time: moment().format("YYYY-MM-DD HH:mm:ss"), failureCount },
+      "Failure count calculated"
+    );
 
+    // Send response
+    logger.info(
+      { time: moment().format("YYYY-MM-DD HH:mm:ss"), urlId: req.body.url_id },
+      "Successfully retrieved total counts"
+    );
     return res.status(200).json({
       message: "Total counts",
       Success: successCount,
       Failure: failureCount,
     });
   } catch (error) {
-    console.error("Error in /totalcounts:", error);
+    logger.error(
+      { time: moment().format("YYYY-MM-DD HH:mm:ss"), error: error.message },
+      "Error occurred in /totalcounts"
+    );
     return res
       .status(500)
       .json({ message: "Server error", error: error.message });
@@ -73,33 +137,61 @@ async function Total_Count(req, res) {
 
 //Search the Urls based on their friendly Name
 async function Search_URL(req, res) {
-  const search = await Urls.find({ friendly_name: req.body.friendly_name });
-  if (search) {
-    res.json({ message: search });
-  } else {
-    res.json({ message: "data not found" });
+  try {
+    const { friendly_name } = req.body;
+
+    // Log request start
+    logger.info(
+      { time: moment().format("YYYY-MM-DD HH:mm:ss"), friendly_name },
+      "Search request initiated"
+    );
+
+    // Search for the URL
+    const search = await Urls.find({ friendly_name });
+
+    if (search && search.length > 0) {
+      logger.info(
+        { time: moment().format("YYYY-MM-DD HH:mm:ss"), friendly_name },
+        "Search result found"
+      );
+      return res.status(200).json({ message: search });
+    } else {
+      logger.warn(
+        { time: moment().format("YYYY-MM-DD HH:mm:ss"), friendly_name },
+        "No data found for the given friendly name"
+      );
+      return res.status(404).json({ message: "Data not found" });
+    }
+  } catch (error) {
+    logger.error(
+      { time: moment().format("YYYY-MM-DD HH:mm:ss"), error: error.message },
+      "Error occurred during search"
+    );
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 }
+
 async function URL_List(req, res) {
   try {
-    // Get the current page and limit from the query parameters, defaulting to 1 for page and 10 for limit
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-
-    // Calculate the number of items to skip
     const skip = (page - 1) * limit;
 
-    // Find URLs for the authenticated user, sorted by created_at descending, with pagination
+    logger.info({ user: req.user.id, page, limit }, "Fetching URL list");
+
     const data = await Urls.find({ user_id: req.user.id })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
-
-    // Find the total count of URLs for pagination info
     const totalCount = await Urls.countDocuments({ user_id: req.user.id });
 
     if (data.length > 0) {
-      // If data exists, return it along with pagination info
+      logger.info(
+        { user: req.user.id, totalCount },
+        "URLs retrieved successfully"
+      );
       res.json({
         message: data,
         pagination: {
@@ -110,67 +202,64 @@ async function URL_List(req, res) {
         },
       });
     } else {
-      // If no data is found, return an appropriate response
+      logger.warn({ user: req.user.id }, "No URLs found for the user");
       res.status(404).json({ message: "No URLs found for this user" });
     }
   } catch (error) {
-    // Handle any potential errors
-    console.error("Error fetching URLs:", error.message);
+    logger.error(
+      { user: req.user.id, error: error.message },
+      "Error fetching URLs"
+    );
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
 
 async function URL_Status(req, res) {
   try {
-    const { url_id } = req.params; // Extract URL ID from request parameters
+    const { url_id } = req.params;
 
     if (!url_id) {
+      logger.warn("URL ID is required but not provided");
       return res.status(400).json({ message: "URL ID is required" });
     }
 
-    // Find URLs based on the provided url_id
+    logger.info({ url_id }, "Fetching URL status");
     const Url_statistics = await URL_Logs.aggregate([
-      {
-        $match: { url_id: url_id }, // Match logs for the specific URL
-      },
+      { $match: { url_id: url_id } },
       {
         $group: {
-          _id: "$ipAddress", // Group by ipAddress
-          firstCreatedAt: { $min: "$createdAt" }, // Get the first createdAt (earliest time)
+          _id: "$ipAddress",
+          firstCreatedAt: { $min: "$createdAt" },
           lastCreatedAt: { $max: "$createdAt" },
-          firstDeviceName: { $first: "$Device_name" }, // Get the Device_name of the first document
-          lastDeviceName: { $last: "$Device_name" }, // Get the Device_name of the last document
-         
-          count: { $sum: 1 }, 
+          firstDeviceName: { $first: "$Device_name" },
+          lastDeviceName: { $last: "$Device_name" },
+          count: { $sum: 1 },
         },
       },
       {
         $project: {
-          ipAddress: "$_id", 
+          ipAddress: "$_id",
           firstCreatedAt: 1,
           lastCreatedAt: 1,
           firstDeviceName: 1,
           lastDeviceName: 1,
           count: 1,
-          _id: 0, // Exclude the _id field from the result
+          _id: 0,
         },
       },
     ]);
 
- 
-
-    // If no URLs are found, return a 404 response
     if (Url_statistics.length === 0) {
+      logger.warn({ url_id }, "No data found for the provided URL ID");
       return res
         .status(404)
         .json({ message: "No URLs found for the provided ID" });
     }
 
-    // Successfully found URLs, return the data
+    logger.info({ url_id }, "URL statistics retrieved successfully");
     res.status(200).json({ message: "List of URLs", urls: Url_statistics });
   } catch (error) {
-    // Catch any errors and send a 500 status with a message
-    console.error("Error fetching URL data:", error);
+    logger.error({ url_id, error: error.message }, "Error fetching URL status");
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
@@ -188,6 +277,8 @@ async function URL_Validation(req, res) {
       : "Unknown Device";
   const browserName = result.browser.name || "Unknown Browser";
 
+  logger.info({ shortId, userAgent }, "Starting URL validation");
+
   try {
     // Find the URL by its short ID
     const shortenedUrl = await Urls.findOne({
@@ -195,26 +286,45 @@ async function URL_Validation(req, res) {
     });
 
     if (!shortenedUrl) {
+      logger.warn({ shortId }, "Shortened URL not found");
       return res.status(404).send("URL not found");
     }
 
+    logger.info({ shortId }, "Shortened URL found");
+
     // If no secret_key exists, redirect directly to the original URL
-    if (!shortenedUrl.secret_key) {
+    if (
+      !shortenedUrl.secret_key &&
+      !shortenedUrl.expire_time &&
+      !shortenedUrl.expired
+    ) {
       const urlAdd = new URL_Logs({
         url_id: shortenedUrl._id,
         ipAddress: req.ip || req.headers["x-forwarded-for"] || "Unknown",
         Device_name: `${deviceName} (${browserName})`,
-
         status: true,
       });
       await urlAdd.save();
+
+      logger.info(
+        { shortId, original_url: shortenedUrl.original_url },
+        "Redirecting to original URL without secret key"
+      );
       return res.redirect(shortenedUrl.original_url);
     }
-    if (shortenedUrl.expired) {
+
+    const currentTime = new Date();
+    if (
+      shortenedUrl.expired === true ||
+      new Date(shortenedUrl.expire_time) < currentTime
+    ) {
+      logger.warn({ shortId }, "URL is expired");
       return res
         .status(410)
         .send("Sorry, the link is expired. Please create a new one.");
     }
+
+    logger.info({ shortId }, "URL is valid, rendering secret key page");
 
     // Send a simple HTML page to collect the secret key
     return res.send(`
@@ -227,14 +337,11 @@ async function URL_Validation(req, res) {
             <script src="https://cdn.tailwindcss.com"></script>
           </head>
           <body class="bg-gray-100 flex items-center justify-center h-screen">
-        
             <div class="w-full max-w-md px-6 py-8 bg-white shadow-lg rounded-lg">
               <h1 class="text-2xl font-semibold text-center text-gray-700 mb-6">
                 Enter Secret Key
               </h1>
-             
               <form id="secretForm" class="flex flex-col space-y-4">
-               
                 <input
                   type="password"
                   id="secretKey"
@@ -243,7 +350,6 @@ async function URL_Validation(req, res) {
                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
                   required
                 />
-              
                 <button
                   type="submit"
                   class="w-full bg-red-500 text-white py-2 rounded-lg font-semibold hover:bg-red-600 transition duration-300"
@@ -279,16 +385,22 @@ async function URL_Validation(req, res) {
             </script>
           </body>
         </html>
-  
       `);
   } catch (error) {
-    console.error("Error during redirection:", error.message);
+    logger.error(
+      { shortId, error: error.message },
+      "Error during URL validation"
+    );
     res.status(500).send("Internal Server Error");
   }
 }
 async function URL_Operation(req, res) {
   const shortId = req.params.shortId;
   const { secret_key } = req.body;
+
+  // Log incoming request details
+  logger.info(`Incoming request for shortId: ${shortId} from IP: ${req.ip}`);
+
   const shortenedUrl = await Urls.findOne({
     shortened_url: { $regex: shortId, $options: "i" },
   });
@@ -309,10 +421,16 @@ async function URL_Operation(req, res) {
 
   try {
     if (!shortenedUrl) {
+      logger.warn(`URL not found for shortId: ${shortId}`);
       return res.status(404).json({ message: "URL not found" });
     }
 
     if (shortenedUrl.secret_key !== parseInt(secret_key)) {
+      // Log the invalid secret key attempt
+      logger.warn(
+        `Invalid secret key for shortId: ${shortId} from IP: ${ipAddress}`
+      );
+
       const urlAdd = new URL_Logs({
         url_id: shortenedUrl._id,
         ipAddress,
@@ -324,21 +442,26 @@ async function URL_Operation(req, res) {
       return res.status(403).json({ message: "Invalid Secret Key" });
     }
 
+    // Log successful request
+    logger.info(`Valid request for shortId: ${shortId} from IP: ${ipAddress}`);
+
     const urlAdd = new URL_Logs({
       url_id: shortenedUrl._id,
-
       ipAddress,
       Device_name: `${deviceName} (${browserName})`,
-      status: false,
+      status: true,
     });
     await urlAdd.save();
 
     return res.status(200).json({ original_url: shortenedUrl.original_url });
   } catch (error) {
-    console.error("Error verifying secret key:", error.message);
+    // Log the error
+    logger.error(
+      `Error verifying secret key for shortId: ${shortId}: ${error.message}`
+    );
+
     const urlAdd = new URL_Logs({
       url_id: shortenedUrl?._id,
-
       ipAddress,
       Device_name: `${deviceName} (${browserName})`,
       status: false,
@@ -348,10 +471,55 @@ async function URL_Operation(req, res) {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 }
+async function URL_Expire_Update(req, res) {
+  try {
+    const { url_id } = req.body;
+
+    // Log the incoming request
+    logger.info(`Incoming request to expire URL with ID: ${url_id}`);
+
+    // Validate input
+    if (!url_id) {
+      logger.warn("URL ID is missing in the request body.");
+      return res.status(400).json({ error: "URL ID is required" });
+    }
+
+    // Prepare update data
+    const updateData = {};
+
+    // Update the URL in the database
+    const result = await Urls.updateOne(
+      { _id: url_id }, // Match by URL ID
+      { $set: { expired: true } }, // Set new data
+      { upsert: false }
+    );
+
+    // Check if the update was successful
+    if (result.matchedCount === 0) {
+      logger.warn(`URL with ID: ${url_id} not found for expiration.`);
+      return res.status(404).json({ error: "URL not found" });
+    }
+
+    // Log success
+    logger.info(`URL with ID: ${url_id} expired successfully.`);
+
+    res.status(200).json({
+      message: "URL expiration status updated successfully",
+      result,
+    });
+  } catch (error) {
+    // Log the error
+    logger.error(
+      `Error updating URL expiration for ID: ${url_id} - ${error.message}`
+    );
+
+    res.status(500).json({ error: "Failed to update URL expiration" });
+  }
+}
 
 module.exports = {
   URL_Creation,
-
+  URL_Expire_Update,
   Total_Count,
   Search_URL,
   URL_List,

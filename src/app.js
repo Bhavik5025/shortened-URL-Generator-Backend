@@ -19,33 +19,33 @@ app.use(User_Router);
 app.use(Url_Router);
 
 // Set an interval to run the code every 20 seconds for checking shortened url
-setInterval(async () => {
-  const currentTime = moment(); // Get the current time
+// setInterval(async () => {
+//   const currentTime = moment(); // Get the current time
 
-  try {
-    // Update all URLs where createdAt is older than 24 hours and expired is not set or false
-    const result = await Url.updateMany(
-      {
-        createdAt: { $lt: currentTime.subtract(24, "hours").toDate() }, // Find documents older than 24 hours
-        expired: { $exists: false },
-      },
-      {
-        $set: { expired: true }, // Set the expired field to true
-      }
-    );
+//   try {
+//     // Update all URLs where createdAt is older than 24 hours and expired is not set or false
+//     const result = await Url.updateMany(
+//       {
+//         createdAt: { $lt: currentTime.subtract(24, "hours").toDate() }, // Find documents older than 24 hours
+//         expired: { $exists: false },
+//       },
+//       {
+//         $set: { expired: true }, // Set the expired field to true
+//       }
+//     );
 
-    if (result.modifiedCount > 0) {
-      logger.info(`${result.modifiedCount} URLs marked as expired.`);
-    } else {
-      logger.info("No URLs need to be updated.");
-    }
-  } catch (error) {
-    logger.error({ err: error }, "Error updating expired URLs");
-  }
-}, 20000); // Runs every 20 seconds
-// Starting the server and logging the port it listens on
+//     if (result.modifiedCount > 0) {
+//       logger.info(`${result.modifiedCount} URLs marked as expired.`);
+//     } else {
+//       logger.info("No URLs need to be updated.");
+//     }
+//   } catch (error) {
+//     logger.error({ err: error }, "Error updating expired URLs");
+//   }
+// }, 20000); // Runs every 20 seconds
+// // Starting the server and logging the port it listens on
 app.listen(port, () => {
-  logger.info(`Server is running on port ${port}`);
+  logger.info({time: moment().format('YYYY-MM-DD HH:mm:ss')},`Server is running on port ${port}`);
 });
 
 // Catch-all for any unexpected routes

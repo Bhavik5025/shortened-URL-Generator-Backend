@@ -6,7 +6,8 @@ const urlSchema = new mongoose.Schema({
   friendly_name:  String ,
   user_id: String,
   secret_key:Number,
-  expired:Boolean,
+  expire_time:Date,
+  expired:Boolean
   
 }, { timestamps: true });
 
