@@ -315,10 +315,10 @@ async function URL_Validation(req, res) {
 
     const currentTime = new Date();
     if (
-      shortenedUrl.expired === true ||
+      shortenedUrl.expired == true ||
       new Date(shortenedUrl.expire_time) < currentTime
     ) {
-      logger.warn({ shortId }, "URL is expired");
+      logger.info({ shortId }, "URL is expired");
       return res
         .status(410)
         .send("Sorry, the link is expired. Please create a new one.");
@@ -326,7 +326,7 @@ async function URL_Validation(req, res) {
 
     logger.info({ shortId }, "URL is valid, rendering secret key page");
 
-    // Send a simple HTML page to collect the secret key
+    // send html page for collect secret key
     return res.send(`
        <!DOCTYPE html>
         <html lang="en">
