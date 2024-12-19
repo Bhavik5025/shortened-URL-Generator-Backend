@@ -1,7 +1,7 @@
 require("dotenv").config();
 const User = require("../models/User");
-const moment=require("moment");
-const logger=require("../logger")
+const moment = require("moment");
+const logger = require("../logger");
 const CryptoJS = require("crypto-js");
 const jwt = require("jsonwebtoken");
 const SECRET_KEY = process.env.SECRET_KEY;
@@ -73,7 +73,7 @@ async function User_Login(req, res) {
       );
       return res
         .status(401)
-        .json({ error: "Invalid credentials or Please Login" });
+        .json({ error: "Invalid credentials or User Not Found." });
     }
 
     // Decrypt the stored password
@@ -86,7 +86,9 @@ async function User_Login(req, res) {
         { time: moment().format("YYYY-MM-DD HH:mm:ss"), name },
         "Login failed: Incorrect password"
       );
-      return res.status(401).json({ error: "Invalid credentials" });
+      return res
+        .status(401)
+        .json({ error: "Login failed: Incorrect password" });
     }
 
     // Generate a JWT token
