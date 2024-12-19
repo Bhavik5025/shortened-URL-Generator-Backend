@@ -47,84 +47,15 @@ async function URL_Creation(req, res) {
   }
 }
 
-async function Success_Count(req, res) {
-  try {
-    const { url_id } = req.body;
-    if (!url_id) {
-      return res.status(400).json({ message: "URL ID is required" });
-    }
-
-    const success = await URL_Logs.aggregate([
-      { $match: { url_id, status: "Success" } },
-      { $group: { _id: "$url_id", totalsuccess: { $sum: 1 } } },
-    ]);
-
-    const totalSuccess = success.length > 0 ? success[0].totalsuccess : 0;
-
-    res.status(200).json({
-      message: "Total successful clicks",
-      success: totalSuccess,
-    });
-  } catch (error) {
-    console.error("Error in /success_count:", error);
-    res.status(500).json({
-      message: "Internal Server Error",
-      error: error.message,
-    });
-  }
-}
-
-async function Failure_Count(req, res) {
-  try {
-    const { url_id } = req.body;
-
-    if (!url_id) {
-      return res.status(400).json({ message: "url_id is required" });
-    }
-
-    // Aggregation to get the count of failures
-    const failure = await URL_Logs.aggregate([
-      {
-        $match: {
-          url_id: url_id,
-          status: "Failure",
-        },
-      },
-      {
-        $group: {
-          _id: "$url_id",
-          totalfailure: { $sum: 1 },
-        },
-      },
-    ]);
-
-    if (failure.length === 0) {
-      return res.status(200).json({
-        message: "Total Failure clicks",
-        success: 0, // Return 0 if no failures are found
-      });
-    }
-
-    // Return the failure count
-    res.status(200).json({
-      message: "Total Failure clicks",
-      success: failure[0].totalfailure,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-}
-
 async function Total_Count(req, res) {
   try {
     const successCount = await URL_Logs.countDocuments({
       url_id: req.body.url_id,
-      status: "Success",
+      status: "true",
     });
     const failureCount = await URL_Logs.countDocuments({
       url_id: req.body.url_id,
-      status: "Failure",
+      status: "false",
     });
 
     return res.status(200).json({
@@ -198,7 +129,35 @@ async function URL_Status(req, res) {
     }
 
     // Find URLs based on the provided url_id
-    const Url_statistics = await URL_Logs.find({ url_id: url_id });
+    const Url_statistics = await URL_Logs.aggregate([
+      {
+        $match: { url_id: url_id }, // Match logs for the specific URL
+      },
+      {
+        $group: {
+          _id: "$ipAddress", // Group by ipAddress
+          firstCreatedAt: { $min: "$createdAt" }, // Get the first createdAt (earliest time)
+          lastCreatedAt: { $max: "$createdAt" },
+          firstDeviceName: { $first: "$Device_name" }, // Get the Device_name of the first document
+          lastDeviceName: { $last: "$Device_name" }, // Get the Device_name of the last document
+         
+          count: { $sum: 1 }, 
+        },
+      },
+      {
+        $project: {
+          ipAddress: "$_id", 
+          firstCreatedAt: 1,
+          lastCreatedAt: 1,
+          firstDeviceName: 1,
+          lastDeviceName: 1,
+          count: 1,
+          _id: 0, // Exclude the _id field from the result
+        },
+      },
+    ]);
+
+ 
 
     // If no URLs are found, return a 404 response
     if (Url_statistics.length === 0) {
@@ -245,8 +204,8 @@ async function URL_Validation(req, res) {
         url_id: shortenedUrl._id,
         ipAddress: req.ip || req.headers["x-forwarded-for"] || "Unknown",
         Device_name: `${deviceName} (${browserName})`,
-        count: 1,
-        status: "Success",
+
+        status: true,
       });
       await urlAdd.save();
       return res.redirect(shortenedUrl.original_url);
@@ -358,8 +317,7 @@ async function URL_Operation(req, res) {
         url_id: shortenedUrl._id,
         ipAddress,
         Device_name: `${deviceName} (${browserName})`,
-        count: 1,
-        status: "Failure",
+        status: false,
       });
       await urlAdd.save();
 
@@ -368,10 +326,10 @@ async function URL_Operation(req, res) {
 
     const urlAdd = new URL_Logs({
       url_id: shortenedUrl._id,
-      count: 1,
+
       ipAddress,
       Device_name: `${deviceName} (${browserName})`,
-      status: "Success",
+      status: false,
     });
     await urlAdd.save();
 
@@ -380,10 +338,10 @@ async function URL_Operation(req, res) {
     console.error("Error verifying secret key:", error.message);
     const urlAdd = new URL_Logs({
       url_id: shortenedUrl?._id,
-      count: 1,
+
       ipAddress,
       Device_name: `${deviceName} (${browserName})`,
-      status: "Failure",
+      status: false,
     });
     await urlAdd.save();
 
@@ -393,8 +351,7 @@ async function URL_Operation(req, res) {
 
 module.exports = {
   URL_Creation,
-  Success_Count,
-  Failure_Count,
+
   Total_Count,
   Search_URL,
   URL_List,

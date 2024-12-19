@@ -1,10 +1,10 @@
 const mongoose = require('mongoose');
 const Url_Logs=mongoose.Schema(
     {
-        url_id:String,
+        url_id: { type: String, index: true }, 
 
-        count:Number,
-        status:String,
+       
+        status:Boolean,
         Device_name:String,
         ipAddress:String,
 

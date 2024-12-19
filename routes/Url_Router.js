@@ -5,8 +5,7 @@ require("dotenv").config();
 const { tokenVerify } = require("../middlewares");
 const {
   URL_Creation,
-  Success_Count,
-  Failure_Count,
+
   Search_URL,
   Total_Count,
   URL_List,
@@ -18,11 +17,6 @@ const {
 // Route to create a shortened URL
 router.post("/createShortendUrl", tokenVerify, URL_Creation);
 
-//return successfull count
-router.post("/success_count", tokenVerify, Success_Count);
-
-//return failure count
-router.post("/failure_count", tokenVerify, Failure_Count);
 
 //improvised version of success and failure count
 router.post("/totalcounts", tokenVerify, Total_Count);
